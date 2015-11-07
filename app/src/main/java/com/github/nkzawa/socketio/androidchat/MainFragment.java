@@ -42,12 +42,13 @@ public class MainFragment extends Fragment {
     private RecyclerView.Adapter mAdapter;
     private boolean mTyping = false;
     private Handler mTypingHandler = new Handler();
-    private String mUsername;
+    private String mUsername = "You";
+    private String guid;
     private Socket mSocket;
     {
         try {
             //change IP to external IP once ready
-            mSocket = IO.socket("http://172.20.7.42:3000");
+            mSocket = IO.socket("http://192.168.1.135:3000");
             //System.out.println("successfully connected to imessage server");
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
@@ -167,7 +168,7 @@ public class MainFragment extends Fragment {
             return;
         }
 
-        mUsername = data.getStringExtra("username");
+//        mUsername = data.getStringExtra("username");
         int numUsers = data.getIntExtra("numUsers", 1);
 
         addLog(getResources().getString(R.string.message_welcome));
@@ -238,6 +239,13 @@ public class MainFragment extends Fragment {
         mTyping = false;
 
         String message = mInputMessageView.getText().toString().trim();
+        JSONObject toSend=new JSONObject();
+        try {
+            toSend.put("text", message);
+            toSend.put("guid", guid);
+        } catch(JSONException e) {
+            System.out.println("PROBLEM PROBLEM ERROR");
+        }
         if (TextUtils.isEmpty(message)) {
             mInputMessageView.requestFocus();
             return;
@@ -247,7 +255,8 @@ public class MainFragment extends Fragment {
         addMessage(mUsername, message);
 
         // perform the sending message attempt.
-        mSocket.emit("new message", message);
+//        mSocket.emit("new message", message);
+        mSocket.emit("sendMessage", toSend);
     }
 
     private void startSignIn() {
@@ -291,8 +300,9 @@ public class MainFragment extends Fragment {
                     String username;
                     String message;
                     try {
-                        username = data.getJSONArray("data").getJSONObject(0).getJSONObject("who_from").getString("value");
+                        username = data.getJSONArray("data").getJSONObject(0).getJSONObject("who_from").getString("lookupValue");
                         message = data.getJSONArray("data").getJSONObject(0).getString("text");
+                        guid = data.getJSONArray("data").getJSONObject(0).getString("guid");
                     } catch (JSONException e) {
                         System.out.println("failed to show message");
                         return;
