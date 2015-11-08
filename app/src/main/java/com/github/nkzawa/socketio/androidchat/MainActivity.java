@@ -2,7 +2,7 @@ package com.github.nkzawa.socketio.androidchat;
 
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-
+import android.content.Context;
 
 public class MainActivity extends ActionBarActivity {
 

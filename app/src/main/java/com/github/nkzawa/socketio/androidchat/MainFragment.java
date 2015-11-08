@@ -1,10 +1,15 @@
 package com.github.nkzawa.socketio.androidchat;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -44,6 +49,7 @@ public class MainFragment extends Fragment {
     private Handler mTypingHandler = new Handler();
     private String mUsername = "You";
     private String guid;
+    private boolean sentByPhone = false;
     private Socket mSocket;
     {
         try {
@@ -82,6 +88,8 @@ public class MainFragment extends Fragment {
         mSocket.on("updateChatData", onChatUpdate);
 
         mSocket.connect();
+        mSocket.emit("getAllChat");
+        System.out.println("Did I get emitted?");
 
         //startSignIn();
     }
@@ -242,7 +250,13 @@ public class MainFragment extends Fragment {
         JSONObject toSend=new JSONObject();
         try {
             toSend.put("text", message);
+//            if(guid == null) {
+//                toSend.put("guid", )
+//            }
             toSend.put("guid", guid);
+
+            //make sure that you prevent duplicates here.
+            sentByPhone = true;
         } catch(JSONException e) {
             System.out.println("PROBLEM PROBLEM ERROR");
         }
@@ -270,6 +284,37 @@ public class MainFragment extends Fragment {
         mSocket.disconnect();
         mSocket.connect();
         startSignIn();
+    }
+
+    private void newMessageNotify(String username, String message) {
+        NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(MainFragment.this.getActivity())
+                        .setSmallIcon(R.drawable.notification_icon)
+                        .setContentTitle(username)
+                        .setContentText(message);
+        // Creates an explicit intent for an Activity in your app
+        Intent resultIntent = new Intent(MainFragment.this.getActivity(), MainActivity.class);
+
+        // The stack builder object will contain an artificial back stack for the
+        // started Activity.
+        // This ensures that navigating backward from the Activity leads out of
+        // your application to the Home screen.
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(MainFragment.this.getActivity());
+        // Adds the back stack for the Intent (but not the Intent itself)
+        stackBuilder.addParentStack(MainActivity.class);
+        // Adds the Intent that starts the Activity to the top of the stack
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(
+                        0,
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                );
+        mBuilder.setContentIntent(resultPendingIntent);
+        NotificationManager mNotificationManager =
+                (NotificationManager) MainFragment.this.getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        // mId allows you to update the notification later on.
+        int mId = 12345;
+        mNotificationManager.notify(mId, mBuilder.build());
     }
 
     private void scrollToBottom() {
@@ -309,7 +354,15 @@ public class MainFragment extends Fragment {
                     }
 
                     removeTyping(username);
-                    addMessage(username, message);
+                    //check to see if you sent it via phone, to prevent duplicates.
+                    if(sentByPhone) {
+                        sentByPhone = false;
+                    }
+                    else {
+                        addMessage(username, message);
+                        newMessageNotify(username, message);
+                    }
+
                 }
             });
         }
